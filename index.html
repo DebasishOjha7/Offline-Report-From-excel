@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-SHIFT Vehicle Status Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #1a1f2b;
+            --glass-bg: #242936;
+            --border-color: #374151;
+            --text-gray: #9ca3af;
+        }
+
+        body { background: var(--bg-color); color: white; font-family: 'Inter', sans-serif; padding: 15px; margin: 0; }
+        
+        header { text-align: center; margin-bottom: 25px; position: relative; }
+        header h1 { font-size: 1.2rem; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        header p { font-size: 0.8rem; color: var(--text-gray); margin: 5px 0; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .card { padding: 15px 5px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .card i { width: 20px; height: 20px; margin-bottom: 5px; }
+        .card .val { font-size: 1.4rem; font-weight: 800; }
+        .card .label { font-size: 0.6rem; text-transform: uppercase; font-weight: 600; opacity: 0.9; }
+
+        .blue { background: #2563eb; } .green { background: #16a34a; } .orange { background: #ea580c; } .red { background: #dc2626; } .dark-red { background: #7f1d1d; }
+
+        .middle-section { display: grid; grid-template-columns: 1.8fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .glass { background: var(--glass-bg); padding: 20px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+
+        h3 { font-size: 0.9rem; margin: 0 0 15px 0; color: #fff; letter-spacing: 0.5px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        th { text-align: left; color: var(--text-gray); padding: 10px 8px; border-bottom: 2px solid var(--border-color); text-transform: uppercase; }
+        td { padding: 12px 8px; border-bottom: 1px solid #1f2937; }
+
+        /* Chart Styling */
+        .chart-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .donut-wrapper { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+        .donut-inner { position: absolute; font-size: 1.5rem; font-weight: 800; }
+
+        /* Offline Table Specifics */
+        .offline-section { overflow-x: auto; }
+        .status-tag { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; }
+        .network-low { color: #fbbf24; }
+        
+        .footer-info { font-size: 0.7rem; color: var(--text-gray); text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard-content">
+    <header>
+        <h1>C-SHIFT VEHICLE STATUS DASHBOARD - KASIA</h1>
+        <p id="live-date">07-02-2026</p>
+    </header>
+
+    <div class="stats-grid">
+        <div class="card blue"><i data-lucide="truck"></i><div class="val" id="t-total">0</div><div class="label">Total Vehicles</div></div>
+        <div class="card green"><i data-lucide="arrow-up-circle"></i><div class="val" id="t-moving">0</div><div class="label">Moving</div></div>
+        <div class="card orange"><i data-lucide="coffee"></i><div class="val" id="t-idling">0</div><div class="label">Idling</div></div>
+        <div class="card red"><i data-lucide="octagon"></i><div class="val" id="t-stopped">0</div><div class="label">Stopped</div></div>
+        <div class="card dark-red"><i data-lucide="clock"></i><div class="val" id="t-offline">0</div><div class="label">Offline</div></div>
+    </div>
+
+    <div class="middle-section">
+        <div class="glass">
+            <h3>DESTINATION-WISE STATUS</h3>
+            <table>
+                <thead>
+                    <tr><th>Destination</th><th>Moving</th><th>Idling</th><th>Stopped</th><th>Offline</th><th>Total</th></tr>
+                </thead>
+                <tbody id="dest-body">
+                    <tr><td colspan="6" style="text-align:center;">Loading data from Google Sheets...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="glass chart-container">
+            <h3>ONLINE STATUS</h3>
+            <div class="donut-wrapper">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" fill="transparent" stroke="#ef4444" stroke-width="10"/>
+                    <circle id="online-bar" cx="60" cy="60" r="50" fill="transparent" stroke="#22c55e" stroke-width="10" stroke-dasharray="314" stroke-dashoffset="314" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="donut-inner" id="percent-text">0%</div>
+            </div>
+            <p id="legend-text" style="font-size: 0.7rem; margin-top: 15px; color: var(--text-gray);"></p>
+        </div>
+    </div>
+
+    <div class="glass offline-section">
+        <h3>OFFLINE VEHICLE DETAILS</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle No</th>
+                    <th>Last Data Received</th>
+                    <th>Since</th>
+                    <th>Location</th>
+                    <th>Network</th>
+                    <th>Reason (Root Cause)</th>
+                    <th>Telematics Done By</th>
+                </tr>
+            </thead>
+            <tbody id="offline-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="footer-info">Auto-refreshing every 60 seconds | Powered by Google Sheets</div>
+
+<script>
+const STATUS_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfw7wzegOdiNXpCZR3us0WNuzFhcfGgeqeL5Cv738Fnj1cFhOZnOeC3LWU7LHsKIwloI1vivKp7w3S/pub?gid=0&single=true&output=csv";
+const OFFLINE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfw7wzegOdiNXpCZR3us0WNuzFhcfGgeqeL5Cv738Fnj1cFhOZnOeC3LWU7LHsKIwloI1vivKp7w3S/pub?gid=1106353728&single=true&output=csv"; 
+
+    async function fetchData() {
+        try {
+            // Fetch Status Sheet
+            const res1 = await fetch(STATUS_SHEET_CSV);
+            const csv1 = await res1.text();
+            const rows1 = csv1.split("\n").slice(1);
+            
+            let tM=0, tI=0, tS=0, tO=0, tTotal=0;
+            let destHTML = "";
+            
+            rows1.forEach(row => {
+                const cols = row.split(",");
+                if(cols.length >= 5) {
+                    const d=cols[0], m=parseInt(cols[1])||0, i=parseInt(cols[2])||0, s=parseInt(cols[3])||0, o=parseInt(cols[4])||0;
+                    const sum = m+i+s+o;
+                    tM+=m; tI+=i; tS+=s; tO+=o; tTotal+=sum;
+                    destHTML += `<tr><td>${d}</td><td>${m}</td><td>${i}</td><td>${s}</td><td>${o}</td><td style="font-weight:bold;">${sum}</td></tr>`;
+                }
+            });
+            
+            document.getElementById('dest-body').innerHTML = destHTML;
+            document.getElementById('t-total').innerText = tTotal;
+            document.getElementById('t-moving').innerText = tM;
+            document.getElementById('t-idling').innerText = tI;
+            document.getElementById('t-stopped').innerText = tS;
+            document.getElementById('t-offline').innerText = tO;
+
+            // Update Chart
+            const onlinePer = tTotal > 0 ? Math.round(((tTotal - tO) / tTotal) * 100) : 0;
+            document.getElementById('percent-text').innerText = onlinePer + "%";
+            document.getElementById('legend-text').innerText = `Online: ${onlinePer}% | Offline: ${100-onlinePer}%`;
+            const circle = document.getElementById('online-bar');
+            circle.style.strokeDashoffset = 314 - (onlinePer / 100 * 314);
+
+            // Fetch Offline Sheet
+            const res2 = await fetch(OFFLINE_SHEET_CSV);
+            const csv2 = await res2.text();
+            const rows2 = csv2.split("\n").slice(1);
+            
+            let offlineHTML = "";
+            rows2.forEach(row => {
+                const cols = row.split(",");
+                if(cols.length >= 7) {
+                    offlineHTML += `
+                        <tr>
+                            <td style="color:#60a5fa; font-weight:bold;">${cols[0]}</td>
+                            <td>${cols[1]}</td>
+                            <td>${cols[2]}</td>
+                            <td>${cols[3]}</td>
+                            <td><span class="network-low">●</span> ${cols[4]}</td>
+                            <td style="color:#f87171;">${cols[5]}</td>
+                            <td>${cols[6]}</td>
+                        </tr>`;
+                }
+            });
+            document.getElementById('offline-body').innerHTML = offlineHTML;
+
+        } catch (err) {
+            console.log("Waiting for CSV Links...");
+        }
+    }
+
+    // Initialize icons and data
+    lucide.createIcons();
+    fetchData();
+    setInterval(fetchData, 60000); // Auto update every 1 min
+</script>
+
+</body>
+</html>
